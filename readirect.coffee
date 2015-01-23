@@ -17,12 +17,30 @@ module.exports = class Readirect
     next()
 
   from: (regex)->
-    m = new Matcher regex
-    @matchers.push m
+    @asMatcher ->
+      @regex = regex
+
+  redirect: (redirectAddress)->
+    @asMatcher ->
+      @redirectAddress = redirectAddress
+
+  asMatcher: (fn)->
+    m = @matcher()
+    fn.call m
+    m.return()
+
+  matcher: ->
+    if @isMatcher
+      return this
+    m = Object.create this
+    m.isMatcher = yes
+    m.complete = false
+    m.return = =>
+      if m.regex? and m.redirectAddress?
+        m.complete = true
+        @matchers.push m unless @matchers.indexOf(m) >= 0
+        return this
+      else
+        return m
+    m.match =->m.regex.exec.apply m.regex, arguments
     m
-
-  @Matcher: class Matcher
-    constructor: (@regex)->
-
-    match: ->@regex.exec.apply @regex, arguments
-    redirect: (@redirectAddress)->
