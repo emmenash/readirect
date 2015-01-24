@@ -1,3 +1,3 @@
 # readirect
 
-> This is a simple server that redirects the user somewhere based on the value of their HTTP `referer` *[sic]* header.
+> Readirect is a simple DSL to configure dynamic redirects based on HTTP requests.
