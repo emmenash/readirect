@@ -21,13 +21,18 @@ module.exports = class Readirect
     next()
 
   # matcher can have any number of patterns, they're applied in order
-  referrer: (regex)->
-    @asMatcher ->
-      @patterns.push {header: 'referer', regex}
+  operators =
+    referrer: {header: 'referer'}
+    referer: {header: 'referer'}
+    url: {prop: 'url'}
+  operators.referer = operators.referrer
 
-  url: (regex)->
-    @asMatcher ->
-      @patterns.push {prop: 'url', regex}
+  for key, options of operators
+    do (key, options)=>
+      @::[key] = (regex)->
+        @asMatcher ->
+          options.regex = regex
+          @patterns.push options
 
   to: (cb)->
     @asMatcher ->
