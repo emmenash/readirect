@@ -4,25 +4,34 @@ module.exports = class Readirect
       return new Readirect
     @matchers = []
 
+    # `.from` keeps a reference to the middleware instance,
+    # sort of like closing any open matchers
+    @from = this
+
   handle: (req, res, next)->
     redirect =(url)->
       res.statusCode = 302
       res.setHeader 'Location', url
       res.setHeader 'Content-Length', '0'
       res.end()
-      
+
     for matcher in @matchers
-      if (m = matcher.match req.headers.referer)
-        return redirect matcher.redirectAddress.apply(null, m[1..])
+      if (args = matcher.match(req))
+        return redirect matcher.redirectCallback.apply({req, res, next}, args)
     next()
 
-  from: (regex)->
+  # matcher can have any number of patterns, they're applied in order
+  referrer: (regex)->
     @asMatcher ->
-      @regex = regex
+      @patterns.push {header: 'referer', regex}
 
-  redirect: (redirectAddress)->
+  url: (regex)->
     @asMatcher ->
-      @redirectAddress = redirectAddress
+      @patterns.push {prop: 'url', regex}
+
+  to: (cb)->
+    @asMatcher ->
+      @redirectCallback = cb
 
   asMatcher: (fn)->
     m = @matcher()
@@ -35,12 +44,23 @@ module.exports = class Readirect
     m = Object.create this
     m.isMatcher = yes
     m.complete = false
+    m.patterns = []
     m.return = =>
-      if m.regex? and m.redirectAddress?
-        m.complete = true
-        @matchers.push m unless @matchers.indexOf(m) >= 0
+      if m.complete
         return this
       else
         return m
-    m.match =->m.regex.exec.apply m.regex, arguments
+    m.match =(req)->
+      a = m.patterns.reduce (args, p)->
+          return null unless args
+          c = if p.header
+            req.headers[p.header]
+          else if p.prop
+            req[p.prop]
+          if result = p.regex.exec c
+            args.concat result[1..]
+        , []
+      a
+
+    @matchers.push m
     m
