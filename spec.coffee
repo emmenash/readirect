@@ -59,3 +59,18 @@ describe 'readirect', ->
         .get '/blog/2007-03-02/fun-times-to-happen'
         .expect 'Location', '/legacy/fun-times-to-happen-2007'
         .end done
+
+  it 'passes arguments from matchers in order', (done)->
+    blog = fork = /[^\/]+/
+    server.use do -> 
+      readirect().from.url rx "/blog/#{rx blog}"
+      .referrer rx "/fork/#{rx fork}"
+      .to (blog, fork)->"/fork/#{fork}/blog/#{blog}"
+
+    server.use (req, res)->res.end 'OK'
+    supertest server
+    .get '/blog/test-blog'
+    .set 'Referer', 'https://github.com/fork/test-fork'
+    .expect 'Location', '/fork/test-fork/blog/test-blog'
+    .end done
+
